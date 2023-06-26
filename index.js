@@ -17,102 +17,103 @@
 // ==/UserScript==
 
 (function () {
-  'use strict'
+    'use strict'
 
-  function useOption(key, title, defaultValue) {
-    if (typeof GM_getValue === 'undefined') {
-      return {
-        value: defaultValue,
-      }
+    function useOption(key, title, defaultValue) {
+        if (typeof GM_getValue === 'undefined') {
+            return {
+                value: defaultValue,
+            }
+        }
+
+        let value = GM_getValue(key, defaultValue)
+        const ref = {
+            get value() {
+                return value
+            },
+            set value(v) {
+                value = v
+                GM_setValue(key, v)
+                location.reload()
+            },
+        }
+
+        GM_registerMenuCommand(`${title}: ${value ? '✅' : '❌'}`, () => {
+            ref.value = !value
+        })
+
+        return ref
     }
 
-    let value = GM_getValue(key, defaultValue)
-    const ref = {
-      get value() {
-        return value
-      },
-      set value(v) {
-        value = v
-        GM_setValue(key, v)
-        location.reload()
-      },
+    const selectForYou = useOption('twitter_select_for_you', 'For You', true)
+    const hideFollowers = useOption('twitter_hide_followers', 'Hide Followers', true)
+
+    const style = document.createElement('style')
+    const hides = [
+        // menu
+        '[aria-label="Communities (New items)"], [aria-label="Communities"], [aria-label="Twitter Blue"], [aria-label="Timeline: Trending now"], [aria-label="时间线：当前趋势"], [aria-label="Who to follow"], [aria-label="Search and explore"], [aria-label="搜索和发现 "], [aria-label="Verified Organizations"]',
+        // submean
+        '* > [href="/i/verified-orgs-signup"]',
+        // sidebar
+        '[aria-label="Trending"] > * > *:nth-child(3), [aria-label="Trending"] > * > *:nth-child(4)',
+        '[aria-label="当前趋势"] > * > *:nth-child(3), [aria-label="Trending"] > * > *:nth-child(4)',
+        // "Verified" tab
+        '[role="presentation"]:has(> [href="/notifications/verified"][role="tab"])',
+        // verified badge
+        '*:has(> * > [aria-label="Verified account"])',
+        // Home tabs
+        '[role="tablist"]:has([href="/home"][role="tab"])',
+        // 主页
+        '[aria-label="主页时间线"] > *:first-child',
+        // Folowers
+        hideFollowers.value && '* > [href$="/followers"][role="link"]',
+    ].filter(Boolean)
+
+    style.innerHTML = [
+        `${hides.join(',')}{ display: none !important; }`,
+        // styling
+        '[aria-label="Search Twitter"] { margin-top: 20px !important; }',
+    ].join('')
+
+    document.body.appendChild(style)
+
+    function selectTab() {
+        if (window.location.pathname === '/home') {
+            const tabIdx = selectForYou.value ? 0 : 1;
+            const tabs = document.querySelectorAll('[href="/home"][role="tab"]')
+            if (tabs.length === 2 && tabs[tabIdx].getAttribute('aria-selected') === 'false')
+            {tabs[tabIdx].click()}
+        }
     }
 
-    GM_registerMenuCommand(`${title}: ${value ? '✅' : '❌'}`, () => {
-      ref.value = !value
+    function hideDiscoverMore() {
+        const conversations = document.querySelector('[aria-label="Timeline: Conversation"]')?.children[0]
+        if (!conversations) {return}
+
+        let hide = false
+        Array.from(conversations.children).forEach((el) => {
+            if (hide) {
+                el.style.display = 'none'
+                return
+            }
+
+            const span = el.querySelector('h2 > div > span')
+
+            if (span?.textContent.trim() === 'Discover more') {
+                hide = true
+                el.style.display = 'none'
+            }
+        })
+    }
+
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            selectTab()
+            hideDiscoverMore()
+        }, 500)
+        setTimeout(() => {
+            hideDiscoverMore()
+        }, 1500)
+        hideDiscoverMore()
     })
-
-    return ref
-  }
-
-  const hideHomeTabs = useOption('twitter_hide_home_tabs', 'Hide Home Tabs', true)
-  const hideBlueBadge = useOption('twitter_hide_blue_badge', 'Hide Blue Badges', true)
-
-  const style = document.createElement('style')
-  const hides = [
-    // menu
-    '[aria-label="Communities (New items)"], [aria-label="Communities"], [aria-label="Twitter Blue"], [aria-label="Verified"], [aria-label="Timeline: Trending now"], [aria-label="Who to follow"], [aria-label="Search and explore"], [aria-label="Verified Organizations"]',
-    // submean
-    '* > [href="/i/verified-orgs-signup"]',
-    // sidebar
-    '[aria-label="Trending"] > * > *:nth-child(3), [aria-label="Trending"] > * > *:nth-child(4), [aria-label="Trending"] > * > *:nth-child(5)',
-    // "Verified" tab
-    '[role="presentation"]:has(> [href="/notifications/verified"][role="tab"])',
-    // verified badge
-    hideBlueBadge.value && '*:has(> * > [aria-label="Verified account"])',
-    // Home tabs
-    hideHomeTabs.value && '[role="tablist"]:has([href="/home"][role="tab"])',
-  ].filter(Boolean)
-
-  style.innerHTML = [
-    `${hides.join(',')}{ display: none !important; }`,
-    // styling
-    '[aria-label="Search Twitter"] { margin-top: 20px !important; }',
-  ].join('')
-
-  document.body.appendChild(style)
-
-  function selectedFollowingTab() {
-    if (hideHomeTabs.value) {
-      if (window.location.pathname === '/home') {
-        const tabs = document.querySelectorAll('[href="/home"][role="tab"]')
-        if (tabs.length === 2 && tabs[1].getAttribute('aria-selected') === 'false')
-          tabs[1].click()
-      }
-    }
-  }
-
-  function hideDiscoverMore() {
-    const conversations = document.querySelector('[aria-label="Timeline: Conversation"]')?.children[0]
-    if (!conversations)
-      return
-
-    let hide = false
-    Array.from(conversations.children).forEach((el) => {
-      if (hide) {
-        el.style.display = 'none'
-        return
-      }
-
-      const span = el.querySelector('h2 > div > span')
-
-      if (span?.textContent.trim() === 'Discover more') {
-        hide = true
-        el.style.display = 'none'
-      }
-    })
-  }
-
-  // Select "Following" tab on home page, if not
-  window.addEventListener('load', () => {
-    setTimeout(() => {
-      selectedFollowingTab()
-      hideDiscoverMore()
-    }, 500)
-    // TODO: use a better way to detect the tab is loaded
-    setTimeout(() => {
-      hideDiscoverMore()
-    }, 1500)
-    hideDiscoverMore()
-  })
 })()
