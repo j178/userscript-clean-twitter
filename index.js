@@ -13,7 +13,7 @@
 // @grant        GM_setValue
 // @grant        GM_registerMenuCommand
 // @grant        GM_unregisterMenuCommand
-// @run-at       document-body
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
@@ -52,7 +52,7 @@
     const hides = [
         // menu
         '[aria-label="Communities (New items)"], [aria-label="Communities"], [aria-label="Twitter Blue"], [aria-label="Timeline: Trending now"], [aria-label="时间线：当前趋势"], [aria-label="Who to follow"], [aria-label="Search and explore"], [aria-label="搜索和发现 "], [aria-label="Verified Organizations"]',
-        // submean
+        // submenu
         '* > [href="/i/verified-orgs-signup"]',
         // sidebar
         '[aria-label="Trending"] > * > *:nth-child(3), [aria-label="Trending"] > * > *:nth-child(4)',
@@ -61,9 +61,12 @@
         '[role="presentation"]:has(> [href="/notifications/verified"][role="tab"])',
         // verified badge
         '*:has(> * > [aria-label="Verified account"])',
+        // verified icon
+        '[aria-label="Verified"][role="link"]',
         // Home tabs
         '[role="tablist"]:has([href="/home"][role="tab"])',
         // 主页
+        '[aria-label="Home timeline"] > *:first-child',
         '[aria-label="主页时间线"] > *:first-child',
         // Folowers
         hideFollowers.value && '* > [href$="/followers"][role="link"]',
@@ -98,8 +101,9 @@
             }
 
             const span = el.querySelector('h2 > div > span')
+            const text = span?.textContent.trim()
 
-            if (span?.textContent.trim() === 'Discover more') {
+            if (text === 'Discover more' || text == '发现更多') {
                 hide = true
                 el.style.display = 'none'
             }
